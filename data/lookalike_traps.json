@@ -1,0 +1,785 @@
+{
+ "pa-00015": {
+  "request": "take a picture of the bottle in front of the camera, 5 second timer",
+  "gold": [
+   "take_photo"
+  ],
+  "trap": "set_timer",
+  "confidence": "medium",
+  "reason": "A timer in the request tempts a separate timer call"
+ },
+ "pa-00024": {
+  "request": "I just got the number for my new flatmate Imogen Murphy, so please add her as a new contact with the number 98450 23718.",
+  "gold": [
+   "create_contact"
+  ],
+  "trap": "update_contact",
+  "confidence": "high",
+  "reason": "Adding details to a contact"
+ },
+ "pa-00034": {
+  "request": "could you set the ringtone and notification volume to 35%?",
+  "gold": [
+   "set_volume"
+  ],
+  "trap": "set_media_volume",
+  "confidence": "high",
+  "reason": "The other volume control, with the same level argument"
+ },
+ "pa-00046": {
+  "request": "Save a new contact for Natalie Singh, phone number 917-555-0148, email natalie.singh.care@gmail.com.",
+  "gold": [
+   "create_contact"
+  ],
+  "trap": "update_contact",
+  "confidence": "high",
+  "reason": "Adding details to a contact"
+ },
+ "pa-00079": {
+  "request": "Can you search my notes for Aisha Q3 roadmap actions? I'm after the action points I saved there.",
+  "gold": [
+   "search_notes"
+  ],
+  "trap": "search_files",
+  "confidence": "low",
+  "reason": "Searching saved personal text"
+ },
+ "pa-00080": {
+  "request": "Text Brooke: I'm at the market setting up the stall. Can you bring the price signs and extra bags when you come?",
+  "gold": [
+   "send_sms"
+  ],
+  "trap": "send_chat_message",
+  "confidence": "high",
+  "reason": "'Text' could mean a chat app"
+ },
+ "pa-00104": {
+  "request": "um i just finished a 75 minute swimming workout and covered 2.4 kilometres can you add that to my training log",
+  "gold": [
+   "log_workout"
+  ],
+  "trap": "start_workout",
+  "confidence": "high",
+  "reason": "Finished workout versus starting one"
+ },
+ "pa-00154": {
+  "request": "Could you please save Wes Kowalski as a new contact, with the email address wes.kowalski@bigpond.com?",
+  "gold": [
+   "create_contact"
+  ],
+  "trap": "update_contact",
+  "confidence": "high",
+  "reason": "Adding details to a contact"
+ },
+ "pa-00165": {
+  "request": "Could you please FaceTime my sister Sophie Walsh so I can show her the wedding cake tasting samples?",
+  "gold": [
+   "make_video_call"
+  ],
+  "trap": "make_call",
+  "confidence": "high",
+  "reason": "Same recipient; video versus voice"
+ },
+ "pa-00180": {
+  "request": "Can you tick off the task to file VAT return for June as done?",
+  "gold": [
+   "complete_todo"
+  ],
+  "trap": "add_todo",
+  "confidence": "low",
+  "reason": "Both take a task string"
+ },
+ "pa-00194": {
+  "request": "E-transfer Megan Walsh 28 dollars, note says thanks for watching the kids tonight, thanks",
+  "gold": [
+   "send_money"
+  ],
+  "trap": "request_money",
+  "confidence": "high",
+  "reason": "Same arguments, opposite direction"
+ },
+ "pa-00195": {
+  "request": "Delete my 4:20 pm alarm for today.",
+  "gold": [
+   "delete_alarm"
+  ],
+  "trap": "delete_reminder",
+  "confidence": "low",
+  "reason": "Same deletion pattern on a timed item"
+ },
+ "pa-00381": {
+  "request": "Save Grace Singh as a new contact with the phone number 07700 900731.",
+  "gold": [
+   "create_contact"
+  ],
+  "trap": "update_contact",
+  "confidence": "high",
+  "reason": "Adding details to a contact"
+ },
+ "pa-00399": {
+  "request": "Start a Messenger video call with Grandma so the kids can show her the drawings they've just finished.",
+  "gold": [
+   "make_video_call"
+  ],
+  "trap": "make_call",
+  "confidence": "high",
+  "reason": "Same recipient; video versus voice"
+ },
+ "pa-00403": {
+  "request": "Could you please add the 45-minute yoga session I just finished to my fitness history?",
+  "gold": [
+   "log_workout"
+  ],
+  "trap": "start_workout",
+  "confidence": "high",
+  "reason": "Finished workout versus starting one"
+ },
+ "pa-00413": {
+  "request": "Can you put on The Wind in the Willows audiobook? I need to listen to the book while I wind down for a bit.",
+  "gold": [
+   "play_audiobook"
+  ],
+  "trap": "play_podcast",
+  "confidence": "medium",
+  "reason": "Another spoken-audio player"
+ },
+ "pa-00505": {
+  "request": "um send a text to Malik Okafor saying hey Malik I'm running about five minutes late for handoff could you let the charge nurse know",
+  "gold": [
+   "send_sms"
+  ],
+  "trap": "send_chat_message",
+  "confidence": "high",
+  "reason": "'Text' could mean a chat app"
+ },
+ "pa-00609": {
+  "request": "I'm about to start my morning route and need to hear new delivery jobs over the van noise—set my ringtone and notification volume to 85.",
+  "gold": [
+   "set_volume"
+  ],
+  "trap": "set_media_volume",
+  "confidence": "high",
+  "reason": "The other volume control, with the same level argument"
+ },
+ "pa-00624": {
+  "request": "New contact Priya Hughes: +91 98450 27361, priya.hughes@gmail.com.",
+  "gold": [
+   "create_contact"
+  ],
+  "trap": "update_contact",
+  "confidence": "high",
+  "reason": "Adding details to a contact"
+ },
+ "pa-00724": {
+  "request": "I need to reimburse Aisha Patel for expenses from tonight's O'Hare run. Please send her $34.25 with the note: \"Thanks for covering the toll and parking on tonight's O'Hare run.\"",
+  "gold": [
+   "send_money"
+  ],
+  "trap": "request_money",
+  "confidence": "high",
+  "reason": "Same arguments, opposite direction"
+ },
+ "pa-00769": {
+  "request": "Send 860 Chinese yuan to Kevin Walsh.",
+  "gold": [
+   "send_money"
+  ],
+  "trap": "request_money",
+  "confidence": "high",
+  "reason": "Same arguments, opposite direction"
+ },
+ "pa-00778": {
+  "request": "Just before I hand the technical log over to engineering, can you take a picture of the signature page so I've got a copy of it?",
+  "gold": [
+   "take_photo"
+  ],
+  "trap": "scan_document",
+  "confidence": "medium",
+  "reason": "Photographing a document"
+ },
+ "pa-00814": {
+  "request": "i've just paid my south east water bill, can you tick off my 'Pay South East Water bill' to-do as done?",
+  "gold": [
+   "complete_todo"
+  ],
+  "trap": "add_todo",
+  "confidence": "low",
+  "reason": "Both take a task string"
+ },
+ "pa-00966": {
+  "request": "Resume my audiobook, The Lincoln Highway.",
+  "gold": [
+   "play_audiobook"
+  ],
+  "trap": "media_control",
+  "confidence": "medium",
+  "reason": "'Resume' matches the playback controls"
+ },
+ "pa-00998": {
+  "request": "can you take a photo of the resort comparison on the laptop with a 10 second timer so i can send it to Grandma?",
+  "gold": [
+   "take_photo"
+  ],
+  "trap": "set_timer",
+  "confidence": "medium",
+  "reason": "A timer in the request tempts a separate timer call"
+ },
+ "pa-01009": {
+  "request": "Search my notes for Bella vet appointment.",
+  "gold": [
+   "search_notes"
+  ],
+  "trap": "search_files",
+  "confidence": "low",
+  "reason": "Searching saved personal text"
+ },
+ "pa-01020": {
+  "request": "Could you please turn up my ringer and alerts to 70 so I can hear my timer and calls over the gym music?",
+  "gold": [
+   "set_volume"
+  ],
+  "trap": "set_media_volume",
+  "confidence": "high",
+  "reason": "The other volume control, with the same level argument"
+ },
+ "pa-01041": {
+  "request": "Hey, could you tick off make chicken stock on the kitchen to-do list as done, please?",
+  "gold": [
+   "complete_todo"
+  ],
+  "trap": "add_todo",
+  "confidence": "low",
+  "reason": "Both take a task string"
+ },
+ "pa-01142": {
+  "request": "Could you please start directions and take me to the National Institute for Communicable Diseases, Sandringham?",
+  "gold": [
+   "start_navigation"
+  ],
+  "trap": "get_travel_time",
+  "confidence": "high",
+  "reason": "'Take me to X' also fits a travel-time lookup"
+ },
+ "pa-01149": {
+  "request": "hey, can you delete my 10 pm alarm for today? i don't need it anymore.",
+  "gold": [
+   "delete_alarm"
+  ],
+  "trap": "delete_reminder",
+  "confidence": "low",
+  "reason": "Same deletion pattern on a timed item"
+ },
+ "pa-01203": {
+  "request": "I just finished a 45-minute yoga session—could you please record it as a completed workout?",
+  "gold": [
+   "log_workout"
+  ],
+  "trap": "start_workout",
+  "confidence": "high",
+  "reason": "Finished workout versus starting one"
+ },
+ "pa-01220": {
+  "request": "I'm between flights and need to get some rest, so please delete the alarm I have set for 10:10 a.m. today.",
+  "gold": [
+   "delete_alarm"
+  ],
+  "trap": "delete_reminder",
+  "confidence": "low",
+  "reason": "Same deletion pattern on a timed item"
+ },
+ "pa-01232": {
+  "request": "Can you turn my ringtone and notifications down to 25, please?",
+  "gold": [
+   "set_volume"
+  ],
+  "trap": "set_media_volume",
+  "confidence": "high",
+  "reason": "The other volume control, with the same level argument"
+ },
+ "pa-01290": {
+  "request": "Can you search my notes for the flat Wi-Fi password I saved?",
+  "gold": [
+   "search_notes"
+  ],
+  "trap": "search_files",
+  "confidence": "low",
+  "reason": "Searching saved personal text"
+ },
+ "pa-01295": {
+  "request": "Delete my 10:45 pm alarm for today.",
+  "gold": [
+   "delete_alarm"
+  ],
+  "trap": "delete_reminder",
+  "confidence": "low",
+  "reason": "Same deletion pattern on a timed item"
+ },
+ "pa-01430": {
+  "request": "Send Darnell Carter 135 dollars right now.",
+  "gold": [
+   "send_money"
+  ],
+  "trap": "request_money",
+  "confidence": "high",
+  "reason": "Same arguments, opposite direction"
+ },
+ "pa-01447": {
+  "request": "Could you please turn my calls and texts alerts up to 70 so I don't miss anything tonight?",
+  "gold": [
+   "set_volume"
+  ],
+  "trap": "set_media_volume",
+  "confidence": "high",
+  "reason": "The other volume control, with the same level argument"
+ },
+ "pa-01466": {
+  "request": "hey uh take me on a walk to Princes Park Carlton North and get the directions going now",
+  "gold": [
+   "start_navigation"
+  ],
+  "trap": "get_travel_time",
+  "confidence": "high",
+  "reason": "'Take me to X' also fits a travel-time lookup"
+ },
+ "pa-01480": {
+  "request": "Quick, send a text to Fiona Brennan: Morning, love! Just wanted to say I miss you—text me when you're free to talk later?",
+  "gold": [
+   "send_sms"
+  ],
+  "trap": "send_chat_message",
+  "confidence": "high",
+  "reason": "'Text' could mean a chat app"
+ },
+ "pa-01495": {
+  "request": "um can you take a photo of me holding a stack of tax returns at my home office desk using the front camera with a 10 second timer",
+  "gold": [
+   "take_photo"
+  ],
+  "trap": "set_timer",
+  "confidence": "medium",
+  "reason": "A timer in the request tempts a separate timer call"
+ },
+ "pa-01498": {
+  "request": "Pay Ethan Chen seventy-three dollars and fifty cents.",
+  "gold": [
+   "send_money"
+  ],
+  "trap": "request_money",
+  "confidence": "high",
+  "reason": "Same arguments, opposite direction"
+ },
+ "pa-01517": {
+  "request": "I’ve been fully booked back-to-back today, so please send an SMS to Aisha saying: Hi Aisha, can we move your appointment to 10:30am tomorrow? I’ve been fully booked back-to-back today.",
+  "gold": [
+   "send_sms"
+  ],
+  "trap": "send_chat_message",
+  "confidence": "high",
+  "reason": "'Text' could mean a chat app"
+ },
+ "pa-01524": {
+  "request": "Can you log the hiking workout I already finished? It lasted 75 minutes and covered 3.6 miles.",
+  "gold": [
+   "log_workout"
+  ],
+  "trap": "start_workout",
+  "confidence": "high",
+  "reason": "Finished workout versus starting one"
+ },
+ "pa-01526": {
+  "request": "Resume The Complete Woodworker audiobook.",
+  "gold": [
+   "play_audiobook"
+  ],
+  "trap": "media_control",
+  "confidence": "medium",
+  "reason": "'Resume' matches the playback controls"
+ },
+ "pa-01561": {
+  "request": "pull up that note i wrote about the gate code and buzzer at the metrotown condo drop-off",
+  "gold": [
+   "search_notes"
+  ],
+  "trap": "search_files",
+  "confidence": "low",
+  "reason": "Searching saved personal text"
+ },
+ "pa-01567": {
+  "request": "Send Tessa Hughes $127.35 USD.",
+  "gold": [
+   "send_money"
+  ],
+  "trap": "request_money",
+  "confidence": "high",
+  "reason": "Same arguments, opposite direction"
+ },
+ "pa-01599": {
+  "request": "Could you please log a cycling workout I just finished? It lasted 50 minutes.",
+  "gold": [
+   "log_workout"
+  ],
+  "trap": "start_workout",
+  "confidence": "high",
+  "reason": "Finished workout versus starting one"
+ },
+ "pa-01608": {
+  "request": "I've got an early video stand-up soon and need to check how I look and whether my collar's sitting straight—could you take a quick photo with the front camera?",
+  "gold": [
+   "take_photo"
+  ],
+  "trap": "record_video",
+  "confidence": "medium",
+  "reason": "The other camera capture"
+ },
+ "pa-01631": {
+  "request": "Take me to the National Print Museum, Haddington Road, Dublin 4, and start turn-by-turn directions.",
+  "gold": [
+   "start_navigation"
+  ],
+  "trap": "get_travel_time",
+  "confidence": "high",
+  "reason": "'Take me to X' also fits a travel-time lookup"
+ },
+ "pa-01643": {
+  "request": "hey, start directions to Grand Central Market and take me there, please.",
+  "gold": [
+   "start_navigation"
+  ],
+  "trap": "get_travel_time",
+  "confidence": "high",
+  "reason": "'Take me to X' also fits a travel-time lookup"
+ },
+ "pa-01737": {
+  "request": "Resume the audiobook The Life-Changing Magic of Tidying Up.",
+  "gold": [
+   "play_audiobook"
+  ],
+  "trap": "media_control",
+  "confidence": "medium",
+  "reason": "'Resume' matches the playback controls"
+ },
+ "pa-01841": {
+  "request": "can you delete my 11:05am alarm for tomorrow? i don't need it anymore.",
+  "gold": [
+   "delete_alarm"
+  ],
+  "trap": "delete_reminder",
+  "confidence": "low",
+  "reason": "Same deletion pattern on a timed item"
+ },
+ "pa-01844": {
+  "request": "Turn up my ringer and alert sounds to 75 percent",
+  "gold": [
+   "set_volume"
+  ],
+  "trap": "set_media_volume",
+  "confidence": "high",
+  "reason": "The other volume control, with the same level argument"
+ },
+ "pa-01855": {
+  "request": "Can you start turn-by-turn navigation and take me to Crown Perth, 8 Whiteman Street, South Perth WA 6151?",
+  "gold": [
+   "start_navigation"
+  ],
+  "trap": "get_travel_time",
+  "confidence": "high",
+  "reason": "'Take me to X' also fits a travel-time lookup"
+ },
+ "pa-01904": {
+  "request": "Tick off sign Tessa's kindy permission slip.",
+  "gold": [
+   "complete_todo"
+  ],
+  "trap": "add_todo",
+  "confidence": "low",
+  "reason": "Both take a task string"
+ },
+ "pa-01932": {
+  "request": "Please use the camera to photograph my child’s handmade cardboard rocket.",
+  "gold": [
+   "take_photo"
+  ],
+  "trap": "record_video",
+  "confidence": "medium",
+  "reason": "The other camera capture"
+ },
+ "pa-01933": {
+  "request": "can you put my audiobook back on – The Thursday Murder Club? i was listening to it before bed.",
+  "gold": [
+   "play_audiobook"
+  ],
+  "trap": "media_control",
+  "confidence": "medium",
+  "reason": "'Resume' matches the playback controls"
+ },
+ "pa-01955": {
+  "request": "hey, just met Nikhil. can you save him as a new contact with his number 98456 23718?",
+  "gold": [
+   "create_contact"
+  ],
+  "trap": "update_contact",
+  "confidence": "high",
+  "reason": "Adding details to a contact"
+ },
+ "pa-02012": {
+  "request": "Start a video call with Grace Singh on Messenger.",
+  "gold": [
+   "make_video_call"
+  ],
+  "trap": "make_call",
+  "confidence": "high",
+  "reason": "Same recipient; video versus voice"
+ },
+ "pa-02016": {
+  "request": "Tick off 'Order 20 vol developer from Sally Beauty' on my to-do list.",
+  "gold": [
+   "complete_todo"
+  ],
+  "trap": "remove_from_shopping_list",
+  "confidence": "medium",
+  "reason": "The task reads like a shopping item"
+ },
+ "pa-02046": {
+  "request": "Can you continue playing my audiobook, Cry, the Beloved Country?",
+  "gold": [
+   "play_audiobook"
+  ],
+  "trap": "media_control",
+  "confidence": "medium",
+  "reason": "'Resume' matches the playback controls"
+ },
+ "pa-02078": {
+  "request": "hey, can you take me to Mount Sinai Hospital, 600 University Ave, Toronto? start the turn-by-turn directions now.",
+  "gold": [
+   "start_navigation"
+  ],
+  "trap": "get_travel_time",
+  "confidence": "high",
+  "reason": "'Take me to X' also fits a travel-time lookup"
+ },
+ "pa-02083": {
+  "request": "Practice just wrapped up and I need to walk through game film with Wes and install some new plays for Saturday. Can you start a video call with Wes Thompson so we can go over it together?",
+  "gold": [
+   "make_video_call"
+  ],
+  "trap": "make_call",
+  "confidence": "high",
+  "reason": "Same recipient; video versus voice"
+ },
+ "pa-02099": {
+  "request": "Send 180 pounds to Omar Fischer.",
+  "gold": [
+   "send_money"
+  ],
+  "trap": "request_money",
+  "confidence": "high",
+  "reason": "Same arguments, opposite direction"
+ },
+ "pa-02108": {
+  "request": "hey can you save a new contact for me? derek nguyen, phone 604-237-8841, and his email is derek.nguyen82@gmail.com. just started on the line today.",
+  "gold": [
+   "create_contact"
+  ],
+  "trap": "update_contact",
+  "confidence": "high",
+  "reason": "Adding details to a contact"
+ },
+ "pa-02145": {
+  "request": "Could you please resume my audiobook of Inverting the Pyramid?",
+  "gold": [
+   "play_audiobook"
+  ],
+  "trap": "media_control",
+  "confidence": "medium",
+  "reason": "'Resume' matches the playback controls"
+ },
+ "pa-02164": {
+  "request": "Send Natalie Chen $31.25.",
+  "gold": [
+   "send_money"
+  ],
+  "trap": "request_money",
+  "confidence": "high",
+  "reason": "Same arguments, opposite direction"
+ },
+ "pa-02184": {
+  "request": "Can you add the rowing session I just finished to my fitness diary? It lasted an hour and a half.",
+  "gold": [
+   "log_workout"
+  ],
+  "trap": "start_workout",
+  "confidence": "high",
+  "reason": "Finished workout versus starting one"
+ },
+ "pa-02206": {
+  "request": "hey, can you send Jamal 68 dollars from me?",
+  "gold": [
+   "send_money"
+  ],
+  "trap": "request_money",
+  "confidence": "high",
+  "reason": "Same arguments, opposite direction"
+ },
+ "pa-02256": {
+  "request": "Can you put my new assistant coach, Wes Brennan, in my phone as a brand-new contact? His number is 617-438-9271.",
+  "gold": [
+   "create_contact"
+  ],
+  "trap": "update_contact",
+  "confidence": "high",
+  "reason": "Adding details to a contact"
+ },
+ "pa-02375": {
+  "request": "Front camera, three-second timer, take a picture.",
+  "gold": [
+   "take_photo"
+  ],
+  "trap": "set_timer",
+  "confidence": "medium",
+  "reason": "A timer in the request tempts a separate timer call"
+ },
+ "pa-02398": {
+  "request": "While I'm cooking in the kitchen, I want to keep listening to my audiobook, so please resume The House in the Cerulean Sea.",
+  "gold": [
+   "play_audiobook"
+  ],
+  "trap": "media_control",
+  "confidence": "medium",
+  "reason": "'Resume' matches the playback controls"
+ },
+ "pa-02461": {
+  "request": "hey, can you delete my alarm for tomorrow at 8:30 am?",
+  "gold": [
+   "delete_alarm"
+  ],
+  "trap": "delete_reminder",
+  "confidence": "low",
+  "reason": "Same deletion pattern on a timed item"
+ },
+ "pa-02475": {
+  "request": "Log the cycling workout I’ve just finished—it lasted 40 minutes.",
+  "gold": [
+   "log_workout"
+  ],
+  "trap": "start_workout",
+  "confidence": "high",
+  "reason": "Finished workout versus starting one"
+ },
+ "pa-02513": {
+  "request": "hey, take me to Embassy TechVillage, Devarabeesanahalli, Bengaluru and start giving me directions",
+  "gold": [
+   "start_navigation"
+  ],
+  "trap": "get_travel_time",
+  "confidence": "high",
+  "reason": "'Take me to X' also fits a travel-time lookup"
+ },
+ "pa-02530": {
+  "request": "hey, can you delete my 9:10 am alarm for tomorrow? i don't need it anymore.",
+  "gold": [
+   "delete_alarm"
+  ],
+  "trap": "delete_reminder",
+  "confidence": "low",
+  "reason": "Same deletion pattern on a timed item"
+ },
+ "pa-02602": {
+  "request": "Can you remove the alarm I have for 6:05 pm today?",
+  "gold": [
+   "delete_alarm"
+  ],
+  "trap": "delete_reminder",
+  "confidence": "low",
+  "reason": "Same deletion pattern on a timed item"
+ },
+ "pa-02627": {
+  "request": "Could you please find the note I wrote about \"Saturday tasting menu fish delivery changes\"?",
+  "gold": [
+   "search_notes"
+  ],
+  "trap": "search_files",
+  "confidence": "low",
+  "reason": "Searching saved personal text"
+ },
+ "pa-02631": {
+  "request": "Check my notes for the Auckland Airport crew car park gate code.",
+  "gold": [
+   "search_notes"
+  ],
+  "trap": "search_files",
+  "confidence": "low",
+  "reason": "Searching saved personal text"
+ },
+ "pa-02665": {
+  "request": "Send Zoe Thompson £54.30.",
+  "gold": [
+   "send_money"
+  ],
+  "trap": "request_money",
+  "confidence": "high",
+  "reason": "Same arguments, opposite direction"
+ },
+ "pa-02698": {
+  "request": "Text Kevin Carter: Hi Kevin, the Year 4 display boards are up. Could you drop off the spare border roll when you're passing? Thanks.",
+  "gold": [
+   "send_sms"
+  ],
+  "trap": "send_chat_message",
+  "confidence": "high",
+  "reason": "'Text' could mean a chat app"
+ },
+ "pa-02702": {
+  "request": "Can you start turn-by-turn navigation to The Permit Room, Breach Candy, Mumbai?",
+  "gold": [
+   "start_navigation"
+  ],
+  "trap": "get_travel_time",
+  "confidence": "high",
+  "reason": "'Take me to X' also fits a travel-time lookup"
+ },
+ "pa-02765": {
+  "request": "I’m still recovering from my knee injury and Raj picked up the knee brace for me, so please send Raj £17.50 with the note \"For the knee brace – thanks!\"",
+  "gold": [
+   "send_money"
+  ],
+  "trap": "request_money",
+  "confidence": "high",
+  "reason": "Same arguments, opposite direction"
+ },
+ "pa-02806": {
+  "request": "Send 35 dollars to Lauren Carter.",
+  "gold": [
+   "send_money"
+  ],
+  "trap": "request_money",
+  "confidence": "high",
+  "reason": "Same arguments, opposite direction"
+ },
+ "pa-02811": {
+  "request": "Send SGD 36.40 to Hannah Okafor, I'm rushing out.",
+  "gold": [
+   "send_money"
+  ],
+  "trap": "request_money",
+  "confidence": "high",
+  "reason": "Same arguments, opposite direction"
+ },
+ "pa-02935": {
+  "request": "I'm at Megan Okafor's stop and need the gate code and drop-off instructions I saved in my notes. Search my notes for Megan Okafor gate code drop-off.",
+  "gold": [
+   "search_notes"
+  ],
+  "trap": "search_files",
+  "confidence": "low",
+  "reason": "Searching saved personal text"
+ },
+ "pa-02943": {
+  "request": "hey, check off 'Export Megan and Marcus wedding gallery' from my to-do list, i just finished it.",
+  "gold": [
+   "complete_todo"
+  ],
+  "trap": "add_todo",
+  "confidence": "low",
+  "reason": "Both take a task string"
+ }
+}
