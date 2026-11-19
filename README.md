@@ -3,7 +3,7 @@
 How should a small on-device model be given a large tool catalog, and does its
 architecture change the answer? This repo compares all tools in context against
 deferred tools with search, on LFM3-1.7B (hybrid) and MiniCPM5-2B (transformer),
-as the catalog grows from 10 to 108 tools. Evaluation runs locally with
+as the catalog grows from 18 to 108 tools. Evaluation runs locally with
 llama.cpp and is tracked in Opik.
 
 Status: experiment design. `scripts/build_experiment.py` builds the nested
@@ -46,3 +46,16 @@ git checkout c406f4367
 cmake -B build -DGGML_METAL=OFF -DGGML_OPENMP=OFF
 cmake --build build --config Release -j
 ```
+
+## Running the experiment
+
+Accuracy runs on a GPU and latency runs on the laptop. Both use the same model
+files, llama.cpp commit, prompts and greedy decoding; `score.py --agreement`
+checks that the two machines produce the same calls on shared requests.
+
+Raw outputs are saved to `results/<machine>/<model>/`, and runs resume where
+they stopped. Scoring is a separate step, so changes to labels never need a rerun.
+
+Prompt caching is off: Liquid's system prompt starts with each request's date
+and time, so no two prompts share a useful prefix, and every request is timed
+the same way.

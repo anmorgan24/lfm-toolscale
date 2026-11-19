@@ -61,16 +61,15 @@ def nested_catalogs(tools, core_tools, sizes=SIZES, seed=0):
     """Return {size: [tool names]} with each catalog containing the previous one.
 
     Non-core tools join in one fixed random order, so lookalikes of core tools
-    enter gradually as the catalog grows. Within a prompt, tools follow one fixed
-    random order of all 108, so their relative order is the same at every size.
+    enter gradually as the catalog grows. Within a prompt, tools keep their order
+    in tools.json, as in Liquid's notebook, so the 108-tool catalog matches
+    Liquid's own evaluation setup.
     """
     names = [tool_name(t) for t in tools]
     rest = [n for n in names if n not in core_tools]
     random.Random(seed).shuffle(rest)
-    prompt_order = sorted(names)
-    random.Random(seed + 1).shuffle(prompt_order)
     catalogs = {}
     for size in sizes:
         members = set(core_tools) | set(rest[: size - len(core_tools)])
-        catalogs[size] = [n for n in prompt_order if n in members]
+        catalogs[size] = [n for n in names if n in members]
     return catalogs

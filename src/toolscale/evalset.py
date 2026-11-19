@@ -38,3 +38,14 @@ def build_eval_set(examples, core_tools, prompt_tools, max_calls=300,
         })
     return sorted(rows, key=lambda r: r["id"])
 
+
+
+def sample_ids(rows, kind, seed=0):
+    """Fixed request samples: the pilot's 100, and the first 30 of those for latency.
+
+    The latency sample is a subset of the pilot sample, so laptop outputs can be
+    compared with GPU outputs for the same requests (the agreement check).
+    """
+    ids = sorted(r["id"] for r in rows)
+    random.Random(seed).shuffle(ids)
+    return {"all": ids, "pilot": ids[:100], "latency": ids[:30]}[kind]
