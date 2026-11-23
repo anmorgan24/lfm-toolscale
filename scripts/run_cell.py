@@ -26,7 +26,7 @@ MODEL_FILES = {"lfm3": "LFM3-1.7B", "minicpm5": "MiniCPM5-2B"}
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--model", choices=list(MODEL_FILES), required=True)
-parser.add_argument("--cell", required=True, help="18, 36, 72, 108 or trap_removed")
+parser.add_argument("--cell", required=True, help="18, 36, 72, 108, an extra order like 36s1 or 72s2, or trap_removed")
 parser.add_argument("--sample", choices=["all", "pilot", "latency"], default="all")
 parser.add_argument("--sampling", choices=["greedy", "recommended"], default="greedy")
 parser.add_argument("--machine", required=True, help="where this runs, e.g. laptop or gpu")
@@ -50,6 +50,8 @@ if args.cell == "trap_removed":
         keep = set(sample_ids(rows.values(), args.sample))
         jobs = {rid: c for rid, c in jobs.items() if rid in keep}
 else:
+    if args.cell not in catalogs:
+        sys.exit(f"Unknown cell {args.cell}; choose from {list(catalogs)} or trap_removed")
     catalog = catalogs[args.cell]
     jobs = {rid: catalog for rid in sample_ids(rows.values(), args.sample)}
 

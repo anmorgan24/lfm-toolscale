@@ -5,8 +5,8 @@
 #   caffeinate -i ./scripts/run_all.sh latency
 # GPU, pilot accuracy:
 #   MACHINE=gpu EXTRA="-ngl 99" CELLS="18 108" ./scripts/run_all.sh pilot
-# GPU, full accuracy:
-#   MACHINE=gpu EXTRA="-ngl 99" CELLS="18 36 72 108 trap_removed" ./scripts/run_all.sh all
+# GPU, full accuracy (three arrival orders for 36 and 72):
+#   MACHINE=gpu EXTRA="-ngl 99" CELLS="18 36 72 108 36s1 72s1 36s2 72s2 trap_removed" ./scripts/run_all.sh all
 set -euo pipefail
 
 SAMPLE=${1:-latency}

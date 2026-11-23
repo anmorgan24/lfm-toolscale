@@ -9,7 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from toolscale.catalog import (  # noqa: E402
-    PROMPT_TOOLS, ROOT, SIZES, core, load_groups, nested_catalogs, validate_groups,
+    PROMPT_TOOLS, ROOT, SIZES, all_catalogs, core, load_groups, nested_catalogs, validate_groups,
 )
 from toolscale.data import load_catalog, load_requests  # noqa: E402
 from toolscale.evalset import build_eval_set  # noqa: E402
@@ -19,6 +19,7 @@ groups = load_groups()
 groups_by_tool = validate_groups(groups, tools)
 core_tools = core(groups_by_tool)
 catalogs = nested_catalogs(tools, core_tools)
+catalog_file = all_catalogs(tools, core_tools)
 
 ds = load_requests()
 examples = [e for split in ("train", "test") for e in ds[split]]
@@ -69,7 +70,8 @@ out = ROOT / "data"
 if trap_removed:
     (out / "trap_removed_catalogs.json").write_text(json.dumps(trap_removed, indent=1))
     print(f"Wrote {len(trap_removed)} trap-removed catalogs to {out / 'trap_removed_catalogs.json'}")
-(out / "catalogs.json").write_text(json.dumps({str(k): v for k, v in catalogs.items()}, indent=1))
+(out / "catalogs.json").write_text(json.dumps(catalog_file, indent=1))
+print(f"Catalogs written: {list(catalog_file)}")
 with open(out / "eval_set.jsonl", "w") as f:
     for r in rows:
         f.write(json.dumps(r, ensure_ascii=False) + "\n")

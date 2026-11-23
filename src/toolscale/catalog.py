@@ -19,6 +19,10 @@ CORE_TOOLS = ["send_money", "create_contact", "delete_alarm", "play_audiobook",
               "set_volume", "complete_todo", "make_video_call", "send_sms"]
 
 SIZES = [18, 36, 72, 108]
+# Extra arrival orders for the middle sizes. 18 is always the core and 108 is
+# always every tool, so only 36 and 72 depend on the order.
+EXTRA_ORDERS = [1, 2]
+MIDDLE_SIZES = [36, 72]
 
 
 def load_groups(path=ROOT / "data" / "lookalike_groups.json"):
@@ -73,3 +77,21 @@ def nested_catalogs(tools, core_tools, sizes=SIZES, seed=0):
         members = set(core_tools) | set(rest[: size - len(core_tools)])
         catalogs[size] = [n for n in names if n in members]
     return catalogs
+
+
+def all_catalogs(tools, core_tools):
+    """Order 0 under plain size keys ("36"), extra orders as "36s1", "72s2"."""
+    catalogs = {str(k): v for k, v in nested_catalogs(tools, core_tools, seed=0).items()}
+    for seed in EXTRA_ORDERS:
+        for size, members in nested_catalogs(tools, core_tools, seed=seed).items():
+            if size in MIDDLE_SIZES:
+                catalogs[f"{size}s{seed}"] = members
+    return catalogs
+
+
+def parse_cell(cell):
+    """'36s1' -> (36, 1); '72' -> (72, 0); 'trap_removed' -> (107, None)."""
+    if cell == "trap_removed":
+        return 107, None
+    size, _, order = cell.partition("s")
+    return int(size), int(order or 0)

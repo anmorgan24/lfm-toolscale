@@ -14,6 +14,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
+from toolscale.catalog import load_groups, parse_cell  # noqa: E402
 from toolscale.data import load_catalog  # noqa: E402
 from toolscale.scoring import Scorer  # noqa: E402
 
@@ -28,6 +29,7 @@ traps_path = ROOT / "data" / "lookalike_traps.json"
 traps = json.loads(traps_path.read_text()) if traps_path.exists() else {}
 removed_path = ROOT / "data" / "trap_removed_catalogs.json"
 removed = json.loads(removed_path.read_text()) if removed_path.exists() else {}
+group_of = {t: g for g, members in load_groups().items() for t in members}
 
 
 def catalog_for(rec):
@@ -39,6 +41,20 @@ def catalog_for(rec):
 def label(rec):
     return scorer.failure_label(json.loads(rows[rec["id"]]["calls"]), rec["calls"],
                                 catalog_for(rec), rec["format_error"])
+
+
+def substitution_kind(rec):
+    """For a substituted call: did the model pick the labeled trap, another tool
+    from a gold tool's lookalike group, or an unrelated tool?"""
+    gold = {c["name"] for c in json.loads(rows[rec["id"]]["calls"])}
+    wrong = [c.get("name") for c in rec["calls"] if c.get("name") not in gold]
+    trap = (traps.get(rec["id"]) or {}).get("trap")
+    if trap and trap in wrong:
+        return "sub_trap"
+    gold_groups = {group_of.get(n) for n in gold} - {None}
+    if any(group_of.get(n) in gold_groups for n in wrong):
+        return "sub_group"
+    return "sub_unrelated"
 
 
 def cluster(rid):
@@ -74,18 +90,22 @@ def summarize(machine):
         ids = list(labels)
         lo, hi = cluster_ci(ids, correct)
         counts = Counter(labels.values())
+        subs = Counter(substitution_kind(r) for r in recs if labels[r["id"]] == "substituted_call")
         look = [rid for rid in ids if rows[rid]["lookalike_scaling"]]
-        row = {"file": str(f.relative_to(ROOT)), "n": len(ids),
+        size, order = parse_cell(recs[0]["cell"])
+        row = {"file": str(f.relative_to(ROOT)), "model": recs[0]["model"], "size": size,
+               "order": "" if order is None else order, "n": len(ids),
                "accuracy": round(sum(correct.values()) / len(ids), 3),
                "ci_low": round(lo, 3), "ci_high": round(hi, 3),
                "lookalike_accuracy": round(sum(correct[r] for r in look) / len(look), 3) if look else "",
                "mean_prompt_tokens": round(sum(r["prompt_tokens"] or 0 for r in recs) / len(recs)),
                "mean_prompt_s": round(sum(r["prompt_ms"] or 0 for r in recs) / len(recs) / 1000, 2),
                "mean_decode_tok_s": round(sum(r["decode_tok_per_s"] or 0 for r in recs) / len(recs), 1),
-               **{lab: counts.get(lab, 0) for lab in LABELS}}
+               **{lab: counts.get(lab, 0) for lab in LABELS},
+               **{k: subs.get(k, 0) for k in ("sub_trap", "sub_group", "sub_unrelated")}}
         out_rows.append(row)
         print(f"{row['file']}: n={row['n']} accuracy {row['accuracy']:.1%} "
-              f"[{lo:.1%}, {hi:.1%}] | {dict(counts)}")
+              f"[{lo:.1%}, {hi:.1%}] | {dict(counts)}" + (f" | substitutions: {dict(subs)}" if subs else ""))
     if out_rows:
         path = ROOT / "results" / machine / "summary.csv"
         with open(path, "w", newline="") as fh:
