@@ -93,7 +93,7 @@ def parse_cell(cell):
     """'36s1' -> (36, 1); '72' -> (72, 0); 'trap_removed' -> (107, None)."""
     if cell == "trap_removed":
         return 107, None
-    if cell == "deferred":
+    if cell.startswith("deferred"):
         return 108, None
     if cell.startswith("followup_"):
         return int(cell.split("_")[1]), None

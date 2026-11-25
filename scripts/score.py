@@ -40,7 +40,7 @@ def catalog_for(rec):
     cell = rec["cell"]
     if cell == "trap_removed":
         return removed[traps[rec["id"]]["trap"]]
-    if cell == "deferred":
+    if cell.startswith("deferred"):
         return catalogs["108"]
     if cell.startswith("followup_"):
         return catalogs[cell.split("_", 1)[1]]
@@ -116,16 +116,19 @@ def summarize(machine):
                **{lab: counts.get(lab, 0) for lab in LABELS},
                **{k: subs.get(k, 0) for k in ("sub_lookup", "sub_trap", "sub_group", "sub_unrelated")},
                "claimed_action": sum(1 for r in recs if labels[r["id"]] == "no_call" and CLAIM.search(r.get("content") or "")),
-               "searched": sum(1 for r in recs if r.get("steps") == 2) if recs[0]["cell"] == "deferred" else "",
+               "searched": sum(1 for r in recs if r.get("steps") == 2) if recs[0]["cell"].startswith("deferred") else "",
                "accuracy_when_found": (lambda f: round(sum(correct[r["id"]] for r in f) / len(f), 3) if f else "")(
                    [r for r in recs if r.get("steps") == 2 and r.get("search_recall") == 1])
-               if recs[0]["cell"] == "deferred" else "",
+               if recs[0]["cell"].startswith("deferred") else "",
                "search_recall": round(sum(r["search_recall"] for r in recs if r.get("search_recall") is not None)
                                       / max(1, sum(r.get("search_recall") is not None for r in recs)), 3)
-               if recs[0]["cell"] == "deferred" else ""}
+               if recs[0]["cell"].startswith("deferred") else ""}
         out_rows.append(row)
+        extra = (f" | searched {row['searched']}, search recall {row['search_recall']:.0%}, "
+                 f"accuracy when the right tool was found {row['accuracy_when_found']:.1%}"
+                 if row["searched"] != "" and row["accuracy_when_found"] != "" else "")
         print(f"{row['file']}: n={row['n']} accuracy {row['accuracy']:.1%} "
-              f"[{lo:.1%}, {hi:.1%}] | {dict(counts)}" + (f" | substitutions: {dict(subs)}" if subs else ""))
+              f"[{lo:.1%}, {hi:.1%}] | {dict(counts)}" + (f" | substitutions: {dict(subs)}" if subs else "") + extra)
     by_size = defaultdict(list)
     for row in out_rows:
         cell = Path(row["file"]).stem.split("_")[0]

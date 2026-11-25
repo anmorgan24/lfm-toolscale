@@ -98,15 +98,25 @@ def search_result(names, by_name, native):
     return json.dumps(fns, ensure_ascii=False)
 
 
-def run_deferred(row, tools, index, sampling, url, native):
-    """Up to two steps. Returns the final result plus search details and summed timings."""
+def run_deferred(row, tools, index, sampling, url, native, forced=False):
+    """Up to two steps. Returns the final result plus search details and summed timings.
+
+    forced: the harness searches on the model's behalf, with the user's request as the
+    query, and presents the results as though the model had searched. Only the
+    model's decision to search is removed; formats and tools are unchanged.
+    """
     by_name = {t["function"]["name"]: t for t in tools}
     messages = build_messages(row, deferred=True)
     loaded = select_tools(tools, PROMPT_TOOLS) + [SEARCH_TOOL]
     step1_tools = deferred_tools(tools) if native else loaded
-    first = complete(messages, step1_tools, sampling=sampling, url=url)
+    if forced:
+        first = {"calls": [{"name": "search_tools", "arguments": {"query": row["request"]}}],
+                 "format_error": False}
+    else:
+        first = complete(messages, step1_tools, sampling=sampling, url=url)
     searches = [(i, c) for i, c in enumerate(first["calls"]) if c["name"] == "search_tools"]
-    record = {"step1_calls": first["calls"], "queries": [], "found": [], "steps": 1, "native": native}
+    record = {"step1_calls": first["calls"], "queries": [], "found": [], "steps": 1,
+              "native": native, "forced": forced}
     if not searches or first["format_error"]:
         final = first
     else:
