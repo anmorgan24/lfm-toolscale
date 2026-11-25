@@ -1,0 +1,19 @@
+0.00.001.555 I srv  llama_server: initializing ...
+0.00.003.357 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.004.239 W srv  server_setup: security: no API key is set and CORS allows all origins (see https://github.com/ggml-org/llama.cpp/pull/25655)
+0.00.007.371 I srv    load_model: loading model '~/Comet/models/MiniCPM5-2B-Q4_K_M.gguf'
+0.03.979.174 I cmn          init: llama threadpool init, n_threads = 4
+0.04.184.360 I srv    load_model: initializing, n_slots = 1, n_ctx_slot = 4096, kv_unified = 'false'
+0.04.189.515 W srv          init: chat template supports preserving reasoning, it is enabled by default (may use more tokens, disable via --no-reasoning-preserve)
+0.04.189.578 I srv  server_run_i: model loaded
+0.04.189.585 I srv  server_on_li: listening on http://127.0.0.1:8090
+0.06.996.914 I slot       select: id  0 | task -1 | selected slot by LRU, n_tokens = 0, t_last = -1
+0.06.997.598 I slot launch_slot_: id  0 | task 0 | processing task, is_child = 0
+0.41.920.887 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =   2048, progress = 0.98, t =  34.92 s / 58.64 tokens per second
+0.45.612.243 I slot print_timing: id  0 | task 0 | prompt eval time =   36418.57 ms /  2094 tokens (   17.39 ms per token,    57.50 tokens per second)
+0.45.612.250 I slot print_timing: id  0 | task 0 |        eval time =    2196.04 ms /    29 tokens (   78.43 ms per token,    12.75 tokens per second)
+0.45.612.251 I slot print_timing: id  0 | task 0 |       total time =   38614.61 ms /  2123 tokens
+0.45.612.253 I slot print_timing: id  0 | task 0 |    graphs reused =         28
+0.45.612.254 I slot print_timing: id  0 | task 0 |   graph reallocs =          0    /     0        (same size) / (changed size)
+0.45.612.525 I slot      release: id  0 | task 0 | stop processing: n_tokens = 2122, truncated = 0
+0.45.644.311 I srv    operator(): operator(): cleaning up before exit...
