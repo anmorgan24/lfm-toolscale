@@ -16,6 +16,14 @@ from datetime import date, datetime, time
 from difflib import SequenceMatcher
 
 
+LOOKUP_PREFIXES = ("list_", "search_", "get_", "read_")
+
+
+def is_lookup(name):
+    """Read-only tools: they list, search, get, or read, and change nothing."""
+    return bool(name) and name.startswith(LOOKUP_PREFIXES)
+
+
 def norm(s):
     s = unicodedata.normalize("NFKC", str(s)).casefold()
     s = "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")

@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 from toolscale.catalog import load_groups, parse_cell  # noqa: E402
 from toolscale.data import load_catalog  # noqa: E402
-from toolscale.scoring import Scorer  # noqa: E402
+from toolscale.scoring import Scorer, is_lookup  # noqa: E402
 
 LABELS = ["correct", "format_error", "no_call", "unneeded_call", "invented_function",
           "substituted_call", "spurious_call", "dropped_call", "extra_call", "argument_error"]
@@ -33,9 +33,14 @@ group_of = {t: g for g, members in load_groups().items() for t in members}
 
 
 def catalog_for(rec):
-    if rec["cell"] == "trap_removed":
+    cell = rec["cell"]
+    if cell == "trap_removed":
         return removed[traps[rec["id"]]["trap"]]
-    return catalogs[rec["cell"]]
+    if cell == "deferred":
+        return catalogs["108"]
+    if cell.startswith("followup_"):
+        return catalogs[cell.split("_", 1)[1]]
+    return catalogs[cell]
 
 
 def label(rec):
@@ -44,10 +49,13 @@ def label(rec):
 
 
 def substitution_kind(rec):
-    """For a substituted call: did the model pick the labeled trap, another tool
-    from a gold tool's lookalike group, or an unrelated tool?"""
+    """For a substituted call: did the model look something up instead of acting,
+    pick the labeled trap, another tool from a gold tool's lookalike group, or an
+    unrelated tool? Checked in that order."""
     gold = {c["name"] for c in json.loads(rows[rec["id"]]["calls"])}
     wrong = [c.get("name") for c in rec["calls"] if c.get("name") not in gold]
+    if wrong and all(is_lookup(n) for n in wrong) and not all(is_lookup(n) for n in gold):
+        return "sub_lookup"
     trap = (traps.get(rec["id"]) or {}).get("trap")
     if trap and trap in wrong:
         return "sub_trap"
@@ -102,10 +110,22 @@ def summarize(machine):
                "mean_prompt_s": round(sum(r["prompt_ms"] or 0 for r in recs) / len(recs) / 1000, 2),
                "mean_decode_tok_s": round(sum(r["decode_tok_per_s"] or 0 for r in recs) / len(recs), 1),
                **{lab: counts.get(lab, 0) for lab in LABELS},
-               **{k: subs.get(k, 0) for k in ("sub_trap", "sub_group", "sub_unrelated")}}
+               **{k: subs.get(k, 0) for k in ("sub_lookup", "sub_trap", "sub_group", "sub_unrelated")},
+               "search_recall": round(sum(r["search_recall"] for r in recs if r.get("search_recall") is not None)
+                                      / max(1, sum(r.get("search_recall") is not None for r in recs)), 3)
+               if recs[0]["cell"] == "deferred" else ""}
         out_rows.append(row)
         print(f"{row['file']}: n={row['n']} accuracy {row['accuracy']:.1%} "
               f"[{lo:.1%}, {hi:.1%}] | {dict(counts)}" + (f" | substitutions: {dict(subs)}" if subs else ""))
+    by_size = defaultdict(list)
+    for row in out_rows:
+        cell = Path(row["file"]).stem.split("_")[0]
+        if row["n"] > 100 and (cell.isdigit() or "s" in cell and cell.split("s")[0].isdigit()):
+            by_size[(row["model"], row["size"])].append(row["accuracy"])
+    if by_size:
+        print("\nAccuracy by catalog size, averaged across arrival orders:")
+        for (model, size), accs in sorted(by_size.items()):
+            print(f"  {model:<9} {size:>3} tools: {sum(accs) / len(accs):.1%}  (orders: {', '.join(f'{a:.1%}' for a in accs)})")
     if out_rows:
         path = ROOT / "results" / machine / "summary.csv"
         with open(path, "w", newline="") as fh:
@@ -113,6 +133,34 @@ def summarize(machine):
             w.writeheader()
             w.writerows(out_rows)
         print(f"\nWrote {path}")
+
+
+def substitution_pairs(machine):
+    """Most common (gold -> chosen) substitutions in each file."""
+    for f, recs in load(machine).items():
+        pairs = Counter()
+        for r in recs:
+            if label(r) != "substituted_call":
+                continue
+            gold = {c["name"] for c in json.loads(rows[r["id"]]["calls"])}
+            for c in r["calls"]:
+                if c.get("name") not in gold:
+                    pairs[(", ".join(sorted(gold)), c.get("name"))] += 1
+        if pairs:
+            print(f"{f.relative_to(ROOT)}: " + "; ".join(f"{a} -> {b} x{n}" for (a, b), n in pairs.most_common(5)))
+
+
+def trap_comparison(machine):
+    """The same lookalike requests at 108 tools, with and without each request's trap."""
+    for model_dir in sorted((ROOT / "results" / machine).glob("*/")):
+        full_path, tr_path = model_dir / "108_all_greedy.jsonl", model_dir / "trap_removed_all_greedy.jsonl"
+        if not (full_path.exists() and tr_path.exists()):
+            continue
+        full = {r["id"]: r for r in map(json.loads, open(full_path))}
+        tr = [json.loads(line) for line in open(tr_path)]
+        present = sum(label(full[r["id"]]) == "correct" for r in tr)
+        absent = sum(label(r) == "correct" for r in tr)
+        print(f"{model_dir.name}: {len(tr)} lookalike requests at 108 tools, correct with trap {present}, without {absent}")
 
 
 def agreement(a, b):
@@ -178,10 +226,15 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--machine")
 parser.add_argument("--opik", action="store_true")
 parser.add_argument("--agreement", nargs=2, metavar=("A", "B"))
+parser.add_argument("--pairs", action="store_true", help="list the most common substitutions per file")
 args = parser.parse_args()
 if args.agreement:
     agreement(*args.agreement)
 if args.machine:
     summarize(args.machine)
+    if args.pairs:
+        print()
+        substitution_pairs(args.machine)
+        trap_comparison(args.machine)
     if args.opik:
         log_to_opik(args.machine)

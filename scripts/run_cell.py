@@ -20,13 +20,14 @@ sys.path.insert(0, str(ROOT / "src"))
 from toolscale.client import GREEDY, RECOMMENDED, complete, server_info  # noqa: E402
 from toolscale.data import load_catalog  # noqa: E402
 from toolscale.evalset import sample_ids  # noqa: E402
+from toolscale.deferred import BM25, run_deferred  # noqa: E402
 from toolscale.prompt import build_messages, select_tools  # noqa: E402
 
 MODEL_FILES = {"lfm3": "LFM3-1.7B", "minicpm5": "MiniCPM5-2B"}
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--model", choices=list(MODEL_FILES), required=True)
-parser.add_argument("--cell", required=True, help="18, 36, 72, 108, an extra order like 36s1 or 72s2, or trap_removed")
+parser.add_argument("--cell", required=True, help="18, 36, 72, 108, an extra order like 36s1 or 72s2, trap_removed, or deferred")
 parser.add_argument("--sample", choices=["all", "pilot", "latency"], default="all")
 parser.add_argument("--sampling", choices=["greedy", "recommended"], default="greedy")
 parser.add_argument("--machine", required=True, help="where this runs, e.g. laptop or gpu")
@@ -49,6 +50,8 @@ if args.cell == "trap_removed":
     if args.sample != "all":
         keep = set(sample_ids(rows.values(), args.sample))
         jobs = {rid: c for rid, c in jobs.items() if rid in keep}
+elif args.cell == "deferred":
+    jobs = {rid: catalogs["108"] for rid in sample_ids(rows.values(), args.sample)}
 else:
     if args.cell not in catalogs:
         sys.exit(f"Unknown cell {args.cell}; choose from {list(catalogs)} or trap_removed")
@@ -63,11 +66,15 @@ todo = [rid for rid in jobs if rid not in done]
 print(f"{args.model} | cell {args.cell} | {args.sample} | {args.sampling} | {len(done)} done, {len(todo)} to go")
 print(f"Server: {info}")
 
+index = BM25(tools)
 start = time.time()
 with open(out_path, "a") as f:
     for i, rid in enumerate(todo, 1):
         catalog = jobs[rid]
-        out = complete(build_messages(rows[rid]), select_tools(tools, catalog), sampling=sampling, url=args.url)
+        if args.cell == "deferred":
+            out = run_deferred(rows[rid], tools, index, sampling, args.url)
+        else:
+            out = complete(build_messages(rows[rid]), select_tools(tools, catalog), sampling=sampling, url=args.url)
         record = {"id": rid, "model": args.model, "cell": args.cell, "catalog_size": len(catalog),
                   "sampling": args.sampling, "machine": args.machine, "server": info, **out}
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
