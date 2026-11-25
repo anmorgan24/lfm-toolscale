@@ -252,52 +252,100 @@ def agreement(a, b):
           f"same label {same_label / len(shared):.1%}")
 
 
-def log_to_opik(machine):
+def describe(model, cell):
+    """A readable condition name for Opik."""
+    size, order = parse_cell(cell)
+    if cell == "trap_removed":
+        return "in context, 107 tools, trap removed"
+    if cell == "deferred":
+        return "deferred tools, model decides to search"
+    if cell == "deferred_forced":
+        return "harness search, " + ("Liquid format" if model == "lfm3" else "tool-list format")
+    if cell == "deferred_forced_plain":
+        return "harness search, tool-list format"
+    if cell.startswith("followup_"):
+        return f"follow-up turn after a lookup, {size} tools"
+    return f"in context, {size} tools" + (f" (order {order})" if size in (36, 72) else "")
+
+
+def log_to_opik(machine, only=None, project="lfm3-toolscale"):
     import opik
+    from opik.exceptions import ExperimentNotFound
     from opik.evaluation import evaluate
     from opik.evaluation.metrics import base_metric, score_result
 
-    class LabelIs(base_metric.BaseMetric):
-        def __init__(self, target):
+    class FieldIs(base_metric.BaseMetric):
+        """1 when an output field equals a value: one metric per failure label or substitution kind."""
+        def __init__(self, field, target):
             super().__init__(name=target)
-            self.target = target
+            self.field, self.target = field, target
 
-        def score(self, label, **ignored):
-            return score_result.ScoreResult(name=self.name, value=float(label == self.target))
+        def score(self, **kwargs):
+            return score_result.ScoreResult(name=self.name, value=float(kwargs.get(self.field) == self.target))
 
-    class PromptSeconds(base_metric.BaseMetric):
-        def score(self, prompt_s, **ignored):
-            return score_result.ScoreResult(name=self.name, value=prompt_s)
+    class Number(base_metric.BaseMetric):
+        def __init__(self, field):
+            super().__init__(name=field)
+            self.field = field
+
+        def score(self, **kwargs):
+            return score_result.ScoreResult(name=self.name, value=float(kwargs.get(self.field) or 0))
+
+    metrics = ([FieldIs("label", lab) for lab in LABELS]
+               + [FieldIs("substitution", k) for k in ("sub_lookup", "sub_trap", "sub_group", "sub_unrelated")]
+               + [Number("prompt_seconds"), Number("prompt_tokens")])
 
     client = opik.Opik()
-    dataset = client.get_or_create_dataset("toolscale-eval-set")
+    dataset = client.get_or_create_dataset(
+        "toolscale-eval-set", description="274 English requests from LiquidAI/phone-assistant-tools (Apache 2.0)")
     dataset.insert([{"request_id": r["id"], "request": r["request"], "category": r["category"],
-                     "gold_calls": r["calls"]} for r in rows.values()])
+                     "expected_calls": r["calls"]} for r in rows.values()])
     items = dataset.get_items()
     if items and "id" not in items[0]:
         sys.exit("Opik dataset items have no 'id' field in this SDK version; update the mapping in log_to_opik.")
     item_ids = {item["request_id"]: item["id"] for item in items}
 
     for f, recs in load(machine).items():
+        if only and only not in str(f):
+            continue
+        first = recs[0]
+        sample = "latency" if "_latency_" in f.stem else "all"
+        condition = describe(first["model"], first["cell"])
+        name = f"{first['model']} | {condition} | {sample} | {machine}"
+        try:
+            exists = bool(client.get_experiments_by_name(name))
+        except ExperimentNotFound:
+            exists = False
+        if exists:
+            print(f"Already logged, skipping: {name}")
+            continue
         by_id = {r["id"]: r for r in recs}
 
         def task(item):
             rec = by_id[item["request_id"]]
-            return {"output": json.dumps(rec["calls"], ensure_ascii=False) or rec["content"],
-                    "label": label(rec), "prompt_s": (rec["prompt_ms"] or 0) / 1000}
+            lab = label(rec)
+            return {"calls": json.dumps(rec["calls"], ensure_ascii=False), "text": rec.get("content") or "",
+                    "label": lab, "substitution": substitution_kind(rec) if lab == "substituted_call" else "",
+                    "found_by_search": ", ".join(rec.get("found") or []),
+                    "prompt_seconds": (rec.get("prompt_ms") or 0) / 1000,
+                    "prompt_tokens": rec.get("prompt_tokens") or 0}
 
-        first = recs[0]
-        evaluate(dataset=dataset, task=task,
-                 scoring_metrics=[LabelIs(lab) for lab in LABELS] + [PromptSeconds(name="prompt_seconds")],
-                 experiment_name=f"{first['model']}-{f.stem}-{machine}",
-                 experiment_config={k: first[k] for k in ("model", "cell", "sampling", "machine", "server")},
+        size, order = parse_cell(first["cell"])
+        evaluate(dataset=dataset, task=task, scoring_metrics=metrics, experiment_name=name,
+                 project_name=project,
+                 experiment_config={"model": first["model"], "condition": condition, "cell": first["cell"],
+                                    "catalog_size": size, "arrival_order": order, "sample": sample,
+                                    "machine": machine, "decoding": first["sampling"], "server": first["server"]},
+                 experiment_tags=[first["model"], machine, f"{size} tools", condition.split(",")[0]],
                  dataset_item_ids=[item_ids[rid] for rid in by_id], verbose=0)
-        print(f"Logged {f.relative_to(ROOT)} to Opik")
+        print(f"Logged: {name}")
 
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--machine")
 parser.add_argument("--opik", action="store_true")
+parser.add_argument("--only", help="with --opik, log only result files whose path contains this text")
+parser.add_argument("--project", default="lfm3-toolscale", help="with --opik, the Opik project for traces")
 parser.add_argument("--agreement", nargs=2, metavar=("A", "B"))
 parser.add_argument("--pairs", action="store_true", help="list the most common substitutions per file")
 parser.add_argument("--compare", nargs=2, metavar=("A", "B"), help="paired comparison of two cells, per model")
@@ -316,4 +364,4 @@ if args.machine and not (args.compare or args.compare_drop):
         substitution_pairs(args.machine)
         trap_comparison(args.machine)
     if args.opik:
-        log_to_opik(args.machine)
+        log_to_opik(args.machine, args.only, args.project)
