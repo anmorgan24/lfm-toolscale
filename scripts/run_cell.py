@@ -27,7 +27,7 @@ MODEL_FILES = {"lfm3": "LFM3-1.7B", "minicpm5": "MiniCPM5-2B"}
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--model", choices=list(MODEL_FILES), required=True)
-parser.add_argument("--cell", required=True, help="18, 36, 72, 108, an extra order like 36s1 or 72s2, trap_removed, deferred, or deferred_forced")
+parser.add_argument("--cell", required=True, help="18, 36, 72, 108, an extra order like 36s1 or 72s2, trap_removed, deferred, deferred_forced, or deferred_forced_plain")
 parser.add_argument("--sample", choices=["all", "pilot", "latency"], default="all")
 parser.add_argument("--sampling", choices=["greedy", "recommended"], default="greedy")
 parser.add_argument("--machine", required=True, help="where this runs, e.g. laptop or gpu")
@@ -50,7 +50,7 @@ if args.cell == "trap_removed":
     if args.sample != "all":
         keep = set(sample_ids(rows.values(), args.sample))
         jobs = {rid: c for rid, c in jobs.items() if rid in keep}
-elif args.cell in ("deferred", "deferred_forced"):
+elif args.cell in ("deferred", "deferred_forced", "deferred_forced_plain"):
     jobs = {rid: catalogs["108"] for rid in sample_ids(rows.values(), args.sample)}
 else:
     if args.cell not in catalogs:
@@ -71,9 +71,12 @@ start = time.time()
 with open(out_path, "a") as f:
     for i, rid in enumerate(todo, 1):
         catalog = jobs[rid]
-        if args.cell in ("deferred", "deferred_forced"):
-            out = run_deferred(rows[rid], tools, index, sampling, args.url, native=args.model == "lfm3",
-                               forced=args.cell == "deferred_forced")
+        if args.cell.startswith("deferred"):
+            # LFM3 gets Liquid's deferred format, except in the _plain cell, which gives it
+            # MiniCPM5's format (found tools added to the tool list) to separate format from model.
+            out = run_deferred(rows[rid], tools, index, sampling, args.url,
+                               native=args.model == "lfm3" and not args.cell.endswith("_plain"),
+                               forced=args.cell.startswith("deferred_forced"))
         else:
             out = complete(build_messages(rows[rid]), select_tools(tools, catalog), sampling=sampling, url=args.url)
         record = {"id": rid, "model": args.model, "cell": args.cell, "catalog_size": len(catalog),
