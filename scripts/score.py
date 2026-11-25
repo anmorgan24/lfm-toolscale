@@ -293,7 +293,8 @@ def log_to_opik(machine, only=None, project="lfm3-toolscale"):
 
     metrics = ([FieldIs("label", lab) for lab in LABELS]
                + [FieldIs("substitution", k) for k in ("sub_lookup", "sub_trap", "sub_group", "sub_unrelated")]
-               + [Number("prompt_seconds"), Number("prompt_tokens")])
+               + [Number("prompt_seconds"), Number("prompt_tokens"),
+                  Number("decode_tokens"), Number("decode_seconds"), Number("decode_tok_s")])
 
     client = opik.Opik()
     dataset = client.get_or_create_dataset(
@@ -328,7 +329,10 @@ def log_to_opik(machine, only=None, project="lfm3-toolscale"):
                     "label": lab, "substitution": substitution_kind(rec) if lab == "substituted_call" else "",
                     "found_by_search": ", ".join(rec.get("found") or []),
                     "prompt_seconds": (rec.get("prompt_ms") or 0) / 1000,
-                    "prompt_tokens": rec.get("prompt_tokens") or 0}
+                    "prompt_tokens": rec.get("prompt_tokens") or 0,
+                    "decode_tokens": rec.get("completion_tokens") or 0,
+                    "decode_seconds": (rec.get("decode_ms") or 0) / 1000,
+                    "decode_tok_s": rec.get("decode_tok_per_s") or 0}
 
         size, order = parse_cell(first["cell"])
         evaluate(dataset=dataset, task=task, scoring_metrics=metrics, experiment_name=name,
