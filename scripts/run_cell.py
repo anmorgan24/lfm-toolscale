@@ -72,7 +72,7 @@ with open(out_path, "a") as f:
     for i, rid in enumerate(todo, 1):
         catalog = jobs[rid]
         if args.cell == "deferred":
-            out = run_deferred(rows[rid], tools, index, sampling, args.url)
+            out = run_deferred(rows[rid], tools, index, sampling, args.url, native=args.model == "lfm3")
         else:
             out = complete(build_messages(rows[rid]), select_tools(tools, catalog), sampling=sampling, url=args.url)
         record = {"id": rid, "model": args.model, "cell": args.cell, "catalog_size": len(catalog),

@@ -17,9 +17,20 @@ Rules:
 - Keep free-text arguments (messages, notes, search queries) in the user's language."""
 
 
-def build_messages(example):
+NO_TOOL_RULE = ("- If no tool can do what is asked, say so briefly instead of calling a different tool. "
+                "If only part of the request is possible, do that part and say what you could not do.")
+DEFERRED_RULE = ("- Most of the phone's tools are not listed above. If none of the listed tools fits the "
+                 "request, call search_tools to find one; if the search finds nothing suitable, say so "
+                 "briefly instead of calling a different tool. If only part of the request is possible, "
+                 "do that part and say what you could not do.")
+
+
+def build_messages(example, deferred=False):
+    """Liquid's prompt, unchanged; for deferred tools, the no-tool rule says to search first."""
     now = datetime.fromisoformat(example["context"]["datetime"])
-    system = SYSTEM_PROMPT.format(
+    template = SYSTEM_PROMPT.replace(NO_TOOL_RULE, DEFERRED_RULE) if deferred else SYSTEM_PROMPT
+    assert not deferred or DEFERRED_RULE in template, "no-tool rule not found in the system prompt"
+    system = template.format(
         weekday=now.strftime("%A"), date=now.strftime("%Y-%m-%d"),
         time=now.strftime("%H:%M"), **example["context"],
     )

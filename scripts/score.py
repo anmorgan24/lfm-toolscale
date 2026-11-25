@@ -18,6 +18,10 @@ from toolscale.catalog import load_groups, parse_cell  # noqa: E402
 from toolscale.data import load_catalog  # noqa: E402
 from toolscale.scoring import Scorer, is_lookup  # noqa: E402
 
+import re as _re
+CLAIM = _re.compile(r"\b(I've|I have|I just)\s+(added|sent|set|created|deleted|removed|started|booked|scheduled|"
+                    r"turned|saved|marked|played|called|logged|texted|paid|transferred|completed)\b", _re.I)
+
 LABELS = ["correct", "format_error", "no_call", "unneeded_call", "invented_function",
           "substituted_call", "spurious_call", "dropped_call", "extra_call", "argument_error"]
 
@@ -111,6 +115,11 @@ def summarize(machine):
                "mean_decode_tok_s": round(sum(r["decode_tok_per_s"] or 0 for r in recs) / len(recs), 1),
                **{lab: counts.get(lab, 0) for lab in LABELS},
                **{k: subs.get(k, 0) for k in ("sub_lookup", "sub_trap", "sub_group", "sub_unrelated")},
+               "claimed_action": sum(1 for r in recs if labels[r["id"]] == "no_call" and CLAIM.search(r.get("content") or "")),
+               "searched": sum(1 for r in recs if r.get("steps") == 2) if recs[0]["cell"] == "deferred" else "",
+               "accuracy_when_found": (lambda f: round(sum(correct[r["id"]] for r in f) / len(f), 3) if f else "")(
+                   [r for r in recs if r.get("steps") == 2 and r.get("search_recall") == 1])
+               if recs[0]["cell"] == "deferred" else "",
                "search_recall": round(sum(r["search_recall"] for r in recs if r.get("search_recall") is not None)
                                       / max(1, sum(r.get("search_recall") is not None for r in recs)), 3)
                if recs[0]["cell"] == "deferred" else ""}
