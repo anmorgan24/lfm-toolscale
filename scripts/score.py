@@ -69,6 +69,13 @@ def substitution_kind(rec):
     return "sub_unrelated"
 
 
+def mentions_tool(rec):
+    """A no-call answer that names a tool it could have called: it described the call instead of making it."""
+    text = rec.get("content") or ""
+    offered = rec.get("found") or catalog_for(rec)
+    return any(name in text for name in offered)
+
+
 def cluster(rid):
     """Requests for the same gold tool are close paraphrases, so they resample together."""
     names = sorted({c["name"] for c in json.loads(rows[rid]["calls"])})
@@ -115,6 +122,7 @@ def summarize(machine):
                "mean_decode_tok_s": round(sum(r["decode_tok_per_s"] or 0 for r in recs) / len(recs), 1),
                **{lab: counts.get(lab, 0) for lab in LABELS},
                **{k: subs.get(k, 0) for k in ("sub_lookup", "sub_trap", "sub_group", "sub_unrelated")},
+               "narrated_call": sum(1 for r in recs if labels[r["id"]] == "no_call" and mentions_tool(r)),
                "claimed_action": sum(1 for r in recs if labels[r["id"]] == "no_call" and CLAIM.search(r.get("content") or "")),
                "searched": sum(1 for r in recs if r.get("steps") == 2) if recs[0]["cell"].startswith("deferred") else "",
                "accuracy_when_found": (lambda f: round(sum(correct[r["id"]] for r in f) / len(f), 3) if f else "")(
@@ -173,6 +181,59 @@ def trap_comparison(machine):
         present = sum(label(full[r["id"]]) == "correct" for r in tr)
         absent = sum(label(r) == "correct" for r in tr)
         print(f"{model_dir.name}: {len(tr)} lookalike requests at 108 tools, correct with trap {present}, without {absent}")
+
+
+def correctness(machine, model, cell):
+    path = ROOT / "results" / machine / model / f"{cell}_all_greedy.jsonl"
+    if not path.exists():
+        return None
+    return {r["id"]: label(r) == "correct" for r in map(json.loads, open(path))}
+
+
+def paired_ci(ids, diff, n_boot=2000, seed=0):
+    """Cluster bootstrap interval for a mean per-request difference, resampling gold tools."""
+    groups = defaultdict(list)
+    for rid in ids:
+        groups[cluster(rid)].append(diff[rid])
+    keys, rng, stats = list(groups), random.Random(seed), []
+    for _ in range(n_boot):
+        picked = [v for k in rng.choices(keys, k=len(keys)) for v in groups[k]]
+        stats.append(sum(picked) / len(picked))
+    stats.sort()
+    return stats[int(0.025 * n_boot)], stats[int(0.975 * n_boot)]
+
+
+def compare(machine, a, b):
+    """Same requests, two conditions, per model: B minus A, with a paired cluster interval."""
+    for model in ("lfm3", "minicpm5"):
+        ca, cb = correctness(machine, model, a), correctness(machine, model, b)
+        if not ca or not cb:
+            continue
+        ids = sorted(set(ca) & set(cb))
+        diff = {i: int(cb[i]) - int(ca[i]) for i in ids}
+        lo, hi = paired_ci(ids, diff)
+        only_a = sum(ca[i] and not cb[i] for i in ids)
+        only_b = sum(cb[i] and not ca[i] for i in ids)
+        print(f"{model:<9} {b} minus {a}: {sum(diff.values()) / len(ids):+.1%} [{lo:+.1%}, {hi:+.1%}] "
+              f"on {len(ids)} requests (right only in {a}: {only_a}, only in {b}: {only_b})")
+
+
+def compare_drop(machine, a, b):
+    """Does one model lose more than the other from condition A to B? Paired on the same requests."""
+    drops = {}
+    for model in ("lfm3", "minicpm5"):
+        ca, cb = correctness(machine, model, a), correctness(machine, model, b)
+        if ca and cb:
+            drops[model] = {i: int(cb[i]) - int(ca[i]) for i in set(ca) & set(cb)}
+    if len(drops) < 2:
+        print("Need both models for", a, "and", b)
+        return
+    ids = sorted(set(drops["lfm3"]) & set(drops["minicpm5"]))
+    diff = {i: drops["lfm3"][i] - drops["minicpm5"][i] for i in ids}
+    lo, hi = paired_ci(ids, diff)
+    for model in drops:
+        print(f"{model:<9} {a} to {b}: {sum(drops[model][i] for i in ids) / len(ids):+.1%}")
+    print(f"LFM3's change minus MiniCPM5's: {sum(diff.values()) / len(ids):+.1%} [{lo:+.1%}, {hi:+.1%}]")
 
 
 def agreement(a, b):
@@ -239,10 +300,16 @@ parser.add_argument("--machine")
 parser.add_argument("--opik", action="store_true")
 parser.add_argument("--agreement", nargs=2, metavar=("A", "B"))
 parser.add_argument("--pairs", action="store_true", help="list the most common substitutions per file")
+parser.add_argument("--compare", nargs=2, metavar=("A", "B"), help="paired comparison of two cells, per model")
+parser.add_argument("--compare-drop", nargs=2, metavar=("A", "B"), help="does one model change more from A to B?")
 args = parser.parse_args()
 if args.agreement:
     agreement(*args.agreement)
-if args.machine:
+if args.compare:
+    compare(args.machine or "gpu", *args.compare)
+if args.compare_drop:
+    compare_drop(args.machine or "gpu", *args.compare_drop)
+if args.machine and not (args.compare or args.compare_drop):
     summarize(args.machine)
     if args.pairs:
         print()
