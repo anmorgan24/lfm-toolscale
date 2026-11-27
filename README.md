@@ -56,6 +56,10 @@ Intervals, paired comparisons, and limitations are in the article and in
   `no_call`, and others), with substitutions split into lookups, labeled traps, other
   lookalikes, and unrelated tools. Confidence intervals resample by gold tool, since
   requests for the same tool are close paraphrases.
+- **Tracking:** each condition is logged as an experiment in
+  [Opik](https://github.com/comet-ml/opik), with the failure labels and substitution
+  kinds as metrics. Comparing conditions side by side and opening individual requests
+  is how the lookup pattern first showed up.
 - **Machines:** accuracy on a GPU, latency and memory on an Intel MacBook Pro CPU.
   On 300 requests run on both, the machines made identical calls 96.3% of the time and
   gave the same label 98.0% of the time.
@@ -131,7 +135,14 @@ python scripts/score.py --compare-drop 18 108      # does one model lose more?
 python scripts/score.py --agreement laptop gpu
 python scripts/score.py --machine gpu --opik       # log experiments to Opik
 python scripts/measure_memory.py                   # peak memory, laptop
+python scripts/make_figures.py                     # figures 3 to 5
 ```
+
+Logging to Opik is optional; everything else runs without it. To use it, either
+self-host [Opik](https://github.com/comet-ml/opik), which is open source, or create a
+[free Comet account](https://www.comet.com/signup), then run `opik configure` once.
+`score.py --opik` creates a dataset of the 274 requests and one experiment per
+result file, and skips experiments that already exist.
 
 ## Before committing new results
 
@@ -145,8 +156,10 @@ bash scripts/scrub_paths.sh                          # replace home-folder paths
 Code in this repo is under the Apache License 2.0 (see `LICENSE`). Third-party
 material and its licenses are listed in `NOTICE`: the evaluation data comes from
 Liquid AI's phone-assistant-tools dataset (Apache 2.0), and the system prompt and
-argument comparison rules follow Liquid's GRPO cookbook notebook. Model weights are
-not included and are subject to their own licenses.
+argument comparison rules follow Liquid's
+[GRPO with TRL notebook](https://github.com/Liquid4All/cookbook/blob/main/finetuning/notebooks/lfm3_grpo_with_trl.ipynb),
+which trains LFM3 on the same dataset. Model weights are not included and are subject
+to their own licenses.
 
 Background reading: the [LFM2 technical report](https://arxiv.org/abs/2511.23404) and
 the [LFM3-1.7B model card](https://huggingface.co/LiquidAI/LFM3-1.7B).
