@@ -14,8 +14,11 @@ CALL_MARKERS = ("<tool_call", "<|tool_call", "<function", '"arguments"')
 
 
 def server_info(url="http://localhost:8080"):
+    """The model file name and llama.cpp build. Only the file name is kept, so results
+    don't record local directory paths."""
     props = requests.get(f"{url}/props", timeout=10).json()
-    return {"model_path": props.get("model_path"), "build": props.get("build_info")}
+    path = props.get("model_path") or ""
+    return {"model_path": path.replace("\\", "/").rsplit("/", 1)[-1], "build": props.get("build_info")}
 
 
 def complete(messages, tools, sampling=GREEDY, seed=0, url="http://localhost:8080",
