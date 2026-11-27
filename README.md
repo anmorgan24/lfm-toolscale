@@ -12,29 +12,33 @@ The accompanying article: *link to come*.
 
 ## Findings
 
-- **The architecture shows up in cost.** From 18 to 108 tools, LFM3 keeps 86% of its
-  prompt processing speed and 55% of its generation speed on a laptop CPU; MiniCPM5
-  keeps 64% and 37%. Measured KV cache growth (12.4 and 41.9 KB per prompt token)
-  matches what the layer layouts predict (12 and 42 KB).
-- **Accuracy falls as the catalog grows,** from 87.2% to 74.1% for LFM3 and from 88.0%
-  to 67.9% for MiniCPM5, mostly because models call a related read-only tool
-  (`list_alarms`, `search_contacts`) instead of acting. Which tools are in the catalog
-  matters as much as how many.
-- **Lookalike confusion is rare** for both models, and removing each request's
-  labeled trap had no effect.
-- **Neither model reliably searches for tools on its own.** When the harness searches
-  for them, accuracy matches keeping all 108 tools in context, at about a quarter of
-  the time per request.
-- **For LFM3, how found tools are presented matters:** 76.3% with found tools added to
-  its tool list, 62.4% in its own deferred-tools format.
-
-Intervals, paired comparisons, and limitations are in the article and in
-`results/*/summary.csv`.
+**The architecture shows up in cost.** From 18 to 108 tools, LFM3 keeps 86% of its
+prompt processing speed and 55% of its generation speed on a laptop CPU; MiniCPM5
+keeps 64% and 37%. Measured KV cache growth (12.4 and 41.9 KB per prompt token)
+matches what the layer layouts predict (12 and 42 KB).
 
 ![LFM3 layer layout](figures/fig1_lfm3_layer_layout.svg)
 
 ![Prompt throughput relative to 18 tools](figures/fig2_prompt_throughput_relative_laptop.png)
 ![Generation speed relative to 18 tools](figures/fig2_generation_speed_relative_laptop.png)
+
+**Accuracy falls as the catalog grows,** from 87.2% to 74.1% for LFM3 and from 88.0%
+to 67.9% for MiniCPM5, mostly because models call a related read-only tool
+(`list_alarms`, `search_contacts`) instead of acting. Which tools are in the catalog
+matters as much as how many. Lookalike confusion is rare for both models, and removing
+each request's labeled trap had no effect.
+
+![What went wrong at 18 and 108 tools](figures/fig4_failures_by_type.png)
+
+**Neither model reliably searches for tools on its own.** When the harness searches
+for them, accuracy matches keeping all 108 tools in context, at about a quarter of the
+time per request. For LFM3, how found tools are presented matters: 76.3% with found
+tools added to its tool list, 62.4% in its own deferred-tools format.
+
+![Deferred tools: accuracy and time per request](figures/fig5_deferred_tools.png)
+
+Intervals, paired comparisons, and limitations are in the article and in
+`results/*/summary.csv`.
 
 ## How the experiment works
 
