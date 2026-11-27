@@ -1,0 +1,19 @@
+lfm-toolscale
+Copyright 2026 Abby Morgan
+
+This project includes material from third parties:
+
+LiquidAI/phone-assistant-tools (https://huggingface.co/datasets/LiquidAI/phone-assistant-tools)
+Licensed under the Apache License, Version 2.0.
+  - data/eval_set.jsonl and data/lookalike_traps.json contain request text and gold
+    calls from this dataset. The tool catalog and argument comparison kinds are
+    downloaded from it at run time.
+
+Liquid AI cookbook, "GRPO with TRL" notebook (https://github.com/Liquid4All/cookbook)
+  - The system prompt in src/toolscale/prompt.py is reproduced from the notebook so
+    that results are comparable with Liquid's evaluation setup.
+  - src/toolscale/scoring.py follows the notebook's rules for comparing predicted and
+    gold arguments, in an independent implementation.
+
+Models are not included. LFM3-1.7B is downloaded from Hugging Face under the LFM Open
+License v1.0, and MiniCPM5-2B under the Apache License, Version 2.0.

@@ -1,12 +1,12 @@
 """Score predicted tool calls against gold calls.
 
-calls_match and its helpers reproduce the comparison in Liquid's notebook
-(Liquid4All/cookbook, finetuning/notebooks/lfm3_grpo_with_trl.ipynb), with the
-tool schemas and argument kinds passed in instead of read from globals.
+An independent implementation of the comparison rules for LiquidAI/phone-assistant-tools
+(Apache 2.0): each tool argument has a kind in the dataset's scoring.json, and each kind
+has a matching rule. The rules follow those used in Liquid's GRPO cookbook notebook, so
+results are comparable with its evaluation; the code is written separately.
 failure_label adds this project's failure categories on top.
 """
 import ast
-import itertools
 import math
 import operator
 import re
@@ -15,8 +15,10 @@ from collections import Counter
 from datetime import date, datetime, time
 from difflib import SequenceMatcher
 
-
 LOOKUP_PREFIXES = ("list_", "search_", "get_", "read_")
+
+NAME_OVERLAP = 0.5     # a shorter name counts if it is contained and covers at least half
+TEXT_SIMILARITY = 0.6  # free text counts if difflib's ratio reaches this
 
 
 def is_lookup(name):
@@ -24,92 +26,138 @@ def is_lookup(name):
     return bool(name) and name.startswith(LOOKUP_PREFIXES)
 
 
-def norm(s):
-    s = unicodedata.normalize("NFKC", str(s)).casefold()
-    s = "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
-    s = "".join(" " if unicodedata.category(c)[0] in "PSZ" else c for c in unicodedata.normalize("NFC", s))
-    return " ".join(s.split())
+# ---------- normalization ----------
+
+def _fold(value):
+    """Case-fold, strip accents, and turn punctuation, symbols and spacing into single spaces."""
+    text = unicodedata.normalize("NFKC", str(value)).casefold()
+    decomposed = unicodedata.normalize("NFD", text)
+    no_marks = "".join(ch for ch in decomposed if unicodedata.category(ch) != "Mn")
+    recomposed = unicodedata.normalize("NFC", no_marks)
+    spaced = "".join(" " if unicodedata.category(ch)[0] in ("P", "S", "Z") else ch for ch in recomposed)
+    return " ".join(spaced.split())
 
 
-def contained(a, b):
-    short, long_ = sorted((a, b), key=len)
-    return bool(short) and short in long_ and len(short) / len(long_) >= 0.5
+def _covers(a, b):
+    short, long_ = (a, b) if len(a) <= len(b) else (b, a)
+    return bool(short) and short in long_ and len(short) >= NAME_OVERLAP * len(long_)
 
 
-def name_equal(a, b):
-    a, b = norm(a), norm(b)
-    return a == b or contained(a, b)
+def _same_name(gold, pred):
+    g, p = _fold(gold), _fold(pred)
+    return g == p or _covers(g, p)
 
 
-def text_similar(a, b):
-    a, b = norm(a), norm(b)
-    return a == b or contained(a, b) or (bool(a) and bool(b) and SequenceMatcher(None, a, b).ratio() >= 0.6)
+def _similar_text(gold, pred):
+    g, p = _fold(gold), _fold(pred)
+    if g == p or _covers(g, p):
+        return True
+    return bool(g) and bool(p) and SequenceMatcher(None, g, p).ratio() >= TEXT_SIMILARITY
 
 
-def parse_when(value, kind):
-    value = str(value).strip()
-    patterns = {"datetime": r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?", "date": r"\d{4}-\d{2}-\d{2}",
-                "time": r"\d{1,2}:\d{2}(:\d{2})?"}
-    if not re.fullmatch(patterns[kind], value):
+# ---------- dates, times, arithmetic ----------
+
+_WHEN_FORMS = {
+    "datetime": (re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?"), datetime),
+    "date": (re.compile(r"\d{4}-\d{2}-\d{2}"), date),
+    "time": (re.compile(r"\d{1,2}:\d{2}(?::\d{2})?"), time),
+}
+
+
+def _when(value, kind):
+    text = str(value).strip()
+    pattern, cls = _WHEN_FORMS[kind]
+    if not pattern.fullmatch(text):
         return None
-    cls = {"datetime": datetime, "date": date, "time": time}[kind]
-    return cls.fromisoformat(value.zfill(5) if kind == "time" and len(value) == 4 else value)
+    if kind == "time" and len(text) == 4:
+        text = "0" + text
+    return cls.fromisoformat(text)
 
 
-OPERATORS = {ast.Add: operator.add, ast.Sub: operator.sub, ast.Mult: operator.mul, ast.Div: operator.truediv,
-             ast.Pow: operator.pow, ast.Mod: operator.mod, ast.USub: operator.neg, ast.UAdd: operator.pos}
+_ARITH = {ast.Add: operator.add, ast.Sub: operator.sub, ast.Mult: operator.mul,
+          ast.Div: operator.truediv, ast.Pow: operator.pow, ast.Mod: operator.mod}
+_SIGN = {ast.USub: operator.neg, ast.UAdd: operator.pos}
 
 
-def calculate(expression):
-    """Safely evaluate an arithmetic expression, or return None."""
-    def walk(node):
+def evaluate_expression(expression):
+    """Evaluate plain arithmetic safely; anything else returns None."""
+    text = str(expression).replace("^", "**").replace("×", "*").replace("÷", "/")
+    try:
+        tree = ast.parse(text, mode="eval").body
+    except (SyntaxError, ValueError):
+        return None
+
+    def ev(node):
         if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
             return node.value
-        if isinstance(node, ast.BinOp):
-            return OPERATORS[type(node.op)](walk(node.left), walk(node.right))
-        if isinstance(node, ast.UnaryOp):
-            return OPERATORS[type(node.op)](walk(node.operand))
-        raise ValueError
+        if isinstance(node, ast.BinOp) and type(node.op) in _ARITH:
+            return _ARITH[type(node.op)](ev(node.left), ev(node.right))
+        if isinstance(node, ast.UnaryOp) and type(node.op) in _SIGN:
+            return _SIGN[type(node.op)](ev(node.operand))
+        raise ValueError("not arithmetic")
+
     try:
-        expr = str(expression).replace("^", "**").replace("×", "*").replace("÷", "/")
-        return float(walk(ast.parse(expr, mode="eval").body))
-    except Exception:
+        return float(ev(tree))
+    except (ValueError, ZeroDivisionError, OverflowError, TypeError):
         return None
 
 
-def same_list(gold, pred, equal):
-    return len(gold) == len(pred) and any(
-        all(equal(g, p) for g, p in zip(gold, perm)) for perm in itertools.permutations(pred))
+# ---------- matching ----------
+
+def _pairs_up(gold, pred, match):
+    """True when every gold item can be paired with a distinct predicted item that matches it."""
+    if len(gold) != len(pred):
+        return False
+
+    def assign(i, used):
+        if i == len(gold):
+            return True
+        return any(j not in used and match(gold[i], pred[j]) and assign(i + 1, used | {j})
+                   for j in range(len(pred)))
+
+    return assign(0, frozenset())
 
 
-def same_value(kind, gold, pred):
+def _is_number(x):
+    return isinstance(x, (int, float)) and not isinstance(x, bool)
+
+
+def _strip_code(x):
+    return re.sub(r"[\s\-().]", "", str(x).casefold())
+
+
+def _match_list(item_match):
+    return lambda g, p: isinstance(p, list) and _pairs_up(list(g), [str(x) for x in p], item_match)
+
+
+MATCHERS = {
+    "bool": lambda g, p: isinstance(p, bool) and g == p,
+    "int": lambda g, p: _is_number(p) and abs(float(g) - float(p)) < 1e-6,
+    "number": lambda g, p: _is_number(p) and abs(float(g) - float(p)) < 1e-6,
+    "enum": lambda g, p: isinstance(p, str) and p.strip().lower() == g,
+    "code": lambda g, p: isinstance(p, str) and _strip_code(g) == _strip_code(p),
+    "datetime": lambda g, p: _when(p, "datetime") is not None and _when(g, "datetime") == _when(p, "datetime"),
+    "date": lambda g, p: _when(p, "date") is not None and _when(g, "date") == _when(p, "date"),
+    "time": lambda g, p: _when(p, "time") is not None and _when(g, "time") == _when(p, "time"),
+    "expr": lambda g, p: (lambda a, b: a is not None and b is not None
+                          and math.isclose(a, b, rel_tol=1e-9, abs_tol=1e-9))(evaluate_expression(g),
+                                                                             evaluate_expression(p)),
+    "name": lambda g, p: isinstance(p, str) and _same_name(g, p),
+    "text": lambda g, p: isinstance(p, str) and _similar_text(g, p),
+    "list_enum": lambda g, p: isinstance(p, list) and sorted(g) == sorted(str(x).lower() for x in p),
+    "list_name": _match_list(_same_name),
+    "list_text": _match_list(_similar_text),
+}
+
+
+def values_match(kind, gold, pred):
+    rule = MATCHERS.get(kind)
+    if rule is None:
+        return False
     try:
-        if kind == "bool":
-            return isinstance(pred, bool) and gold == pred
-        if kind in ("int", "number"):
-            return isinstance(pred, (int, float)) and not isinstance(pred, bool) and abs(float(gold) - float(pred)) < 1e-6
-        if kind == "enum":
-            return isinstance(pred, str) and gold == pred.strip().lower()
-        if kind == "code":
-            return isinstance(pred, str) and re.sub(r"[\s\-().]", "", str(gold).casefold()) == re.sub(r"[\s\-().]", "", pred.casefold())
-        if kind in ("datetime", "date", "time"):
-            return parse_when(pred, kind) is not None and parse_when(gold, kind) == parse_when(pred, kind)
-        if kind == "expr":
-            g, p = calculate(gold), calculate(pred)
-            return g is not None and p is not None and math.isclose(g, p, rel_tol=1e-9, abs_tol=1e-9)
-        if kind == "name":
-            return isinstance(pred, str) and name_equal(gold, pred)
-        if kind == "text":
-            return isinstance(pred, str) and text_similar(gold, pred)
-        if kind == "list_enum":
-            return isinstance(pred, list) and sorted(gold) == sorted(str(x).lower() for x in pred)
-        if kind == "list_name":
-            return isinstance(pred, list) and same_list(gold, [str(x) for x in pred], name_equal)
-        if kind == "list_text":
-            return isinstance(pred, list) and same_list(gold, [str(x) for x in pred], text_similar)
+        return bool(rule(gold, pred))
     except (TypeError, ValueError, OverflowError, ZeroDivisionError):
         return False
-    return False
 
 
 class Scorer:
@@ -117,31 +165,34 @@ class Scorer:
         self.schemas = {t["function"]["name"]: t["function"]["parameters"] for t in tools}
         self.kinds = kinds
 
-    def canonical(self, name, arguments):
-        """Fill schema defaults, drop empty optional values, and treat end_date == date as a single day."""
+    def _normalized_args(self, name, arguments):
+        """Keep required arguments and non-empty optional ones, fill schema defaults,
+        and drop an end_date equal to date (a single day either way)."""
         schema = self.schemas[name]
         required = set(schema.get("required", []))
-        out = {k: v for k, v in (arguments or {}).items() if k in required or v not in (None, "", [])}
-        for k, prop in schema["properties"].items():
-            if k not in out and "default" in prop:
-                out[k] = prop["default"]
-        if "end_date" in out and out.get("end_date") == out.get("date"):
-            del out["end_date"]
-        return out
+        args = {k: v for k, v in (arguments or {}).items()
+                if k in required or v not in (None, "", [])}
+        for key, prop in schema["properties"].items():
+            if key not in args and "default" in prop:
+                args[key] = prop["default"]
+        if "end_date" in args and args["end_date"] == args.get("date"):
+            args.pop("end_date")
+        return args
 
     def same_call(self, gold, pred):
-        if gold["name"] != pred.get("name"):
+        name = gold["name"]
+        if pred.get("name") != name:
             return False
-        g = self.canonical(gold["name"], gold.get("arguments"))
-        p = self.canonical(gold["name"], pred.get("arguments"))
-        kinds = self.kinds[gold["name"]]
-        return set(g) == set(p) and all(k in kinds and same_value(kinds[k], g[k], p[k]) for k in g)
+        g = self._normalized_args(name, gold.get("arguments"))
+        p = self._normalized_args(name, pred.get("arguments"))
+        kinds = self.kinds[name]
+        return g.keys() == p.keys() and all(k in kinds and values_match(kinds[k], g[k], p[k]) for k in g)
 
     def calls_match(self, gold, pred):
         """True when the prediction makes exactly the gold calls, in any order."""
-        if len(gold) != len(pred) or any(call.get("name") not in self.schemas for call in pred):
+        if any(call.get("name") not in self.schemas for call in pred):
             return False
-        return any(all(self.same_call(g, p) for g, p in zip(gold, perm)) for perm in itertools.permutations(pred))
+        return _pairs_up(gold, pred, self.same_call)
 
     def failure_label(self, gold, pred, catalog, format_error=False):
         """One label per output, checked in order. See the experiment plan's metrics table.
