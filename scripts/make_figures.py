@@ -1,9 +1,14 @@
-"""Draw figures 3 to 5 from the saved results.
+"""Draw the article's figures from the saved results.
 
   python scripts/make_figures.py
 
-Reads results/gpu/summary.csv and results/laptop/*/*.jsonl (run scripts/score.py for
-both machines first) and writes PNG and SVG files to figures/.
+Figure 1 is LFM3's layer layout (from its GGUF metadata). Figure 2 reads the laptop
+latency results in results/laptop/*/*.jsonl. Figures 3 to 5 read results/gpu/summary.csv
+(run scripts/score.py --machine gpu first) and the laptop results. Writes PNG and SVG
+files to figures/.
+
+Colors: LFM3 is always blue and MiniCPM5 always orange, and those two colors mean
+nothing else in any figure. Red marks lookups in figure 4, the finding it exists to show.
 """
 import csv
 import json
@@ -16,7 +21,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "figures"
-MODELS = {"lfm3": ("LFM3-1.7B", "#d1605a"), "minicpm5": ("MiniCPM5-2B", "#c97a35")}
+MODELS = {"lfm3": ("LFM3-1.7B", "#2f6db5"), "minicpm5": ("MiniCPM5-2B", "#e08e3c")}
 SIZES = [18, 36, 72, 108]
 INK, QUIET, GRID = "#1f2328", "#57606a", "#e6e9ed"
 
@@ -58,6 +63,77 @@ def save(fig, name):
     print(f"wrote figures/{name}.png and .svg")
 
 
+def figure1():
+    """LFM3-1.7B's 24 layers by type, read from the GGUF metadata
+    (lfm3.attention.head_count_kv and lfm3.attention.sliding_window_pattern)."""
+    def kind(i):
+        return "global" if i % 4 == 2 else ("swa" if i % 4 == 0 and i > 0 else "conv")
+    styles = {"conv": dict(facecolor="white", edgecolor="#8c959f", linewidth=1.2),
+              "swa": dict(facecolor="#d9cdf2", edgecolor="#9b84d6", linewidth=1.2),
+              "global": dict(facecolor="#b9a3e3", edgecolor="#5b3fa8", linewidth=2)}
+    fig, ax = plt.subplots(figsize=(8.5, 3.3))
+    for i in range(24):
+        ax.add_patch(matplotlib.patches.FancyBboxPatch(
+            (i * 1.12, 0), 0.95, 1.4, boxstyle="round,pad=0,rounding_size=0.12", **styles[kind(i)]))
+    ax.text(0, -0.35, "layer 0", color=QUIET, fontsize=9.5, va="top")
+    ax.text(23 * 1.12 + 0.95, -0.35, "layer 23", color=QUIET, fontsize=9.5, va="top", ha="right")
+    legend = [("conv", "Gated short convolution (13 layers): mixes each token with the 6 before it"),
+              ("swa", "Sliding-window attention (5 layers): sees the most recent 256 tokens"),
+              ("global", "Global attention (6 layers): sees the whole prompt and keeps a full KV cache")]
+    for j, (k, text) in enumerate(legend):
+        y = -1.9 - j * 0.78
+        ax.add_patch(matplotlib.patches.FancyBboxPatch(
+            (0, y), 0.55, 0.5, boxstyle="round,pad=0,rounding_size=0.08", **styles[k]))
+        ax.text(0.85, y + 0.25, text, va="center", color=INK, fontsize=10)
+    ax.set_xlim(-0.2, 24 * 1.12)
+    ax.set_ylim(-3.9, 2.0)
+    ax.set_aspect("equal")
+    ax.axis("off")
+    titles(ax, "Only 6 of the 24 layers in LFM3-1.7B see the whole prompt",
+           "Layer types read from the model's GGUF metadata, layer 0 at the left")
+    save(fig, "fig1_lfm3_layer_layout")
+
+
+def laptop_speeds(model, size):
+    """Prompt throughput (mean tokens / mean seconds) and mean generation speed."""
+    path = ROOT / "results" / "laptop" / model / f"{size}_latency_greedy.jsonl"
+    recs = [json.loads(line) for line in open(path)]
+    prompt = sum(r["prompt_tokens"] for r in recs) / (sum(r["prompt_ms"] for r in recs) / 1000)
+    decode = sum(r["decode_tok_per_s"] for r in recs) / len(recs)
+    return prompt, decode
+
+
+def figure2():
+    """Speed as the catalog grows, on the laptop: relative to 18 tools, and absolute."""
+    speeds = {m: {s: laptop_speeds(m, s) for s in SIZES} for m in MODELS}
+    for relative in (True, False):
+        fig, axes = plt.subplots(1, 2, figsize=(11, 4.2), sharey=relative)
+        for ax, idx, name in zip(axes, (0, 1), ("Prompt processing", "Generation")):
+            for model, (label, color) in MODELS.items():
+                base = speeds[model][18][idx]
+                ys = [speeds[model][s][idx] / (base if relative else 1) for s in SIZES]
+                ax.plot(range(len(SIZES)), ys, marker="o", color=color, linewidth=2, label=label)
+                end = f"{ys[-1]:.0%}" if relative else f"{ys[-1]:.0f}"
+                ax.text(len(SIZES) - 1 + 0.08, ys[-1], end, color=color, va="center", fontsize=9.5)
+            ax.set_xticks(range(len(SIZES)), [str(s) for s in SIZES])
+            ax.set_xlabel("tools in the catalog")
+            ax.grid(axis="y", color=GRID)
+            ax.set_axisbelow(True)
+            if relative:
+                ax.set_ylim(0, 1.05)
+                ax.yaxis.set_major_formatter(matplotlib.ticker.PercentFormatter(1.0, decimals=0))
+            else:
+                ax.set_ylim(0, None)
+                ax.set_ylabel("tokens per second")
+            note = ("Laptop CPU, 30 requests per point, each model relative to its speed at 18 tools"
+                    if relative else "Laptop CPU, 30 requests per point")
+            titles(ax, f"{name} speed as the catalog grows", note if idx == 0 else " ")
+        axes[0].legend(frameon=False, loc="lower left")
+        if relative:
+            axes[0].set_ylabel("% of speed at 18 tools")
+        save(fig, "fig2_speed_relative" if relative else "fig2_speed_absolute")
+
+
 def figure3(rows):
     """Accuracy against catalog size, with each arrival order as its own point."""
     fig, ax = plt.subplots(figsize=(7.5, 4.2))
@@ -85,12 +161,12 @@ def figure3(rows):
 
 
 SEGMENTS = [  # (label, columns summed, color)
-    ("looked something up instead", ["sub_lookup"], "#cf4a3c"),
-    ("other wrong tool", ["substituted_call", "-sub_lookup"], "#e9a093"),
-    ("right call plus an extra one", ["spurious_call"], "#e3a04f"),
+    ("looked something up instead", ["sub_lookup"], "#c0392b"),
+    ("other wrong tool", ["substituted_call", "-sub_lookup"], "#e8a39b"),
+    ("right call plus an extra one", ["spurious_call"], "#8e6bbf"),
     ("no call", ["no_call"], "#6e7781"),
     ("called a tool when none was needed", ["unneeded_call"], "#a9b4bf"),
-    ("wrong arguments", ["argument_error"], "#4a78b0"),
+    ("wrong arguments", ["argument_error"], "#4f9d8a"),
     ("other", ["format_error", "invented_function", "dropped_call", "extra_call"], "#d0d7de"),
 ]
 
@@ -178,6 +254,8 @@ def figure5(rows):
 
 
 if __name__ == "__main__":
+    figure1()
+    figure2()
     rows = gpu_rows()
     figure3(rows)
     figure4(rows)

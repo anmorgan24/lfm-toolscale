@@ -19,8 +19,7 @@ matches what the layer layouts predict (12 and 42 KB).
 
 ![LFM3 layer layout](figures/fig1_lfm3_layer_layout.svg)
 
-![Prompt throughput relative to 18 tools](figures/fig2_prompt_throughput_relative_laptop.png)
-![Generation speed relative to 18 tools](figures/fig2_generation_speed_relative_laptop.png)
+![Speed relative to 18 tools](figures/fig2_speed_relative.png)
 
 **Accuracy falls as the catalog grows,** from 87.2% to 74.1% for LFM3 and from 88.0%
 to 67.9% for MiniCPM5, mostly because models call a related read-only tool
@@ -139,7 +138,7 @@ python scripts/score.py --compare-drop 18 108      # does one model lose more?
 python scripts/score.py --agreement laptop gpu
 python scripts/score.py --machine gpu --opik       # log experiments to Opik
 python scripts/measure_memory.py                   # peak memory, laptop
-python scripts/make_figures.py                     # figures 3 to 5
+python scripts/make_figures.py                     # all figures
 ```
 
 Logging to Opik is optional; everything else runs without it. To use it, either
